@@ -9,7 +9,7 @@ exports.handleIncomingMessage = async (req, res) => {
       const senderPhone = messageObj?.from;
       const senderName = messageObj?.from_name;
   
-      if (!(senderPhone === '919999013016')) {
+      if (!(senderPhone === '919999013016' || senderPhone === '917000565054')) {
         console.log(`Message from unauthorized number: ${senderPhone} — Ignored.`);
         return res.sendStatus(200);
       }
