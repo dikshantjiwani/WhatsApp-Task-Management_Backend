@@ -10,11 +10,11 @@ exports.handleIncomingMessage = async (req, res) => {
     const senderName = messageObj?.from_name;
 
     const allowedSender = '919999013016';
-    if (senderPhone !== allowedSender) {
+    if (senderPhone !== allowedSender || senderPhone!== '918178350806') {
       console.log(`🚫 Message from unauthorized number: ${senderPhone} — Ignored.`);
       return res.sendStatus(200);
     }
-    
+
     console.log("📩 Incoming:", messageText);
 
     if (!messageText.includes(',')) {
