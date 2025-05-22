@@ -39,4 +39,4 @@ async function updateTaskDetails(id, updates) {
     return result.rows[0];
   }
 
-module.exports = { createTask, getAllTasks, getTasksByAssignee, markTaskDone };
+module.exports = { createTask, getAllTasks, getTasksByAssignee, markTaskDone, updateTaskDetails };
