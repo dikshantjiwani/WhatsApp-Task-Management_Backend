@@ -5,7 +5,7 @@ exports.createTask = async (req, res) => {
   try {
     const task = await Task.createTask(req.body);
 
-    const message = `📝 *New Task Assigned*\n\n📌 Task: ${task.task}\n👤 Assignee: ${task.assignee}\n📅 Due: ${task.due_time}\n🗒️ Notes: ${task.notes}\n\nReply *DONE ${task.id}* to mark as done.`;
+    const message = ` *New Task Assigned*\n\n Task: ${task.task}\n Assignee: ${task.assignee}\n Due: ${task.due_time}\n Notes: ${task.notes}\n\nReply *DONE ${task.id}* to mark as done.`;
     await sendWhatsAppMessage(req.body.assignee_phone, message); // assuming phone is passed
 
     res.status(201).json(task);
@@ -49,9 +49,9 @@ exports.updateTaskDetails = async (req, res) => {
     const task = await Task.updateTaskDetails(taskId, { status, notes });
 
     // Send WhatsApp messages to both assignee and creator
-    const message = `🔔 Task *${task.task}* updated.\n📝 Notes: ${task.notes}\n✅ Status: ${task.status}`;
+    const message = ` Task *${task.task}* updated.\n Notes: ${task.notes}\n Status: ${task.status}`;
     await sendWhatsAppMessage(task.assignee_phone, message);
-    await sendWhatsAppMessage(task.creator_phone, message); // You may need to store creatorPhone
+    await sendWhatsAppMessage(task.creator_phone, message); 
 
     res.json(task);
   } catch (err) {
