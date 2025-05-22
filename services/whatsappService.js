@@ -1,16 +1,16 @@
 const axios = require('axios');
 require('dotenv').config();
 
-const BASE_URL = process.env.WHAPI_BASE_URL;
+const BASE_URL = process.env.WHAPI_BASE_URL; // should be https://gate.whapi.cloud
 const TOKEN = process.env.WHAPI_TOKEN;
 
 async function sendWhatsAppMessage(phoneNumber, message) {
   try {
     const res = await axios.post(
-      `${BASE_URL}/sendMessage`,
+      `${BASE_URL}/messages/text`,
       {
-        phone: phoneNumber,
-        message: message,
+        to: phoneNumber,
+        body: message
       },
       {
         headers: {
@@ -22,7 +22,8 @@ async function sendWhatsAppMessage(phoneNumber, message) {
     console.log(`✅ WhatsApp message sent to ${phoneNumber}`);
     return res.data;
   } catch (error) {
-    console.error(`❌ Error sending WhatsApp message to ${phoneNumber}:`, error.message);
+    console.error(`❌ Error sending WhatsApp message to ${phoneNumber}:`, error.response?.data || error.message);
+    throw error;
   }
 }
 
