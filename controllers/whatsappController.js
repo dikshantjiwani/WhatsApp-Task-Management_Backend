@@ -1,4 +1,5 @@
 const Task = require('../models/taskModel');
+const User = require('../models/userModel');
 const { sendWhatsAppMessage } = require('../services/whatsappService');
 
 exports.handleIncomingMessage = async (req, res) => {
@@ -6,53 +7,89 @@ exports.handleIncomingMessage = async (req, res) => {
     const messageObj = req.body?.messages?.[0];
     const messageText = messageObj?.text?.body?.trim();
     const senderPhone = messageObj?.from;
+    const senderName = messageObj?.from_name;
 
-    if (!messageText || !senderPhone) {
-      return res.sendStatus(400);
+    console.log("📩 Incoming:", messageText);
+
+    if (!messageText.includes(',')) {
+      await sendWhatsAppMessage(senderPhone, "❌ Invalid format. Use: <TASK>, <ASSIGNEE>, <OPTIONAL TIME>, <NOTES>");
+      return res.sendStatus(200);
     }
 
-    // ✅ Handle DONE <taskId>
-    if (messageText.toUpperCase().startsWith('DONE')) {
-      const taskId = parseInt(messageText.split(' ')[1]);
-
-      if (isNaN(taskId)) {
-        await sendWhatsAppMessage(senderPhone, "❌ Invalid task ID. Use: DONE <id>");
-        return res.sendStatus(200);
-      }
-
-      const task = await Task.markTaskDone(taskId);
-      const confirmation = `✅ Task *${task.task}* marked as done.\nNotes: ${task.notes}`;
-      await sendWhatsAppMessage(senderPhone, confirmation);
+    const parts = messageText.split(',').map(p => p.trim());
+    if (parts.length < 3) {
+      await sendWhatsAppMessage(senderPhone, "❌ Please provide at least: task, assignee, and notes.");
+      return res.sendStatus(200);
     }
 
-    // ✅ Handle SHOW TASKS (all)
-    else if (messageText.toUpperCase() === 'SHOW TASKS') {
-      const tasks = await Task.getAllTasks();
-      const formatted = tasks
-        .filter(t => t.status !== 'Done')
-        .map(t => `#${t.id}: ${t.task} → ${t.assignee} (Due: ${t.due_time || 'N/A'})`)
-        .join('\n') || "🎉 No pending tasks!";
-      await sendWhatsAppMessage(senderPhone, `📋 *Ongoing Tasks:*\n\n${formatted}`);
+    const [task, assigneeRaw, maybeTimeOrNotes, ...restNotes] = parts;
+
+    // Time detection (rudimentary: if includes ":")
+    let due_time = null;
+    let notes = "";
+    if (maybeTimeOrNotes.match(/\d{2}:\d{2}/)) {
+      due_time = maybeTimeOrNotes;
+      notes = restNotes.join(', ');
+    } else {
+      notes = [maybeTimeOrNotes, ...restNotes].join(', ');
     }
 
-    // ✅ Handle SHOW TASKS FOR <assignee>
-    else if (messageText.toUpperCase().startsWith('SHOW TASKS FOR')) {
-      const assignee = messageText.slice(15).trim();
-      if (!assignee) {
-        await sendWhatsAppMessage(senderPhone, "❌ Please specify an assignee. Example: SHOW TASKS FOR Dikshant");
-        return res.sendStatus(200);
-      }
-      const tasks = await Task.getTasksByAssignee(assignee);
-      const formatted = tasks
-        .filter(t => t.status !== 'Done')
-        .map(t => `#${t.id}: ${t.task} (Due: ${t.due_time || 'N/A'})`)
-        .join('\n') || `🎉 No pending tasks for ${assignee}!`;
-      await sendWhatsAppMessage(senderPhone, `📋 *Tasks for ${assignee}:*\n\n${formatted}`);
+    const assignee = assigneeRaw;
+
+    // Fetch assignee phone
+    const assignee_phone = await User.getUserPhoneByName(assignee);
+    if (!assignee_phone) {
+      await sendWhatsAppMessage(senderPhone, `❌ Could not find user '${assignee}' in system.`);
+      return res.sendStatus(200);
     }
+
+    // Create task in DB
+    const createdTask = await Task.createTask({
+      task,
+      assignee,
+      due_time: due_time || null,
+      notes,
+      creator_phone: senderPhone,
+      assignee_phone
+    });
+
+    const message = `📝 *New Task Assigned*\n\n📌 Task: ${task}\n👤 Assignee: ${assignee}\n📅 Due: ${due_time || 'Not specified'}\n🗒️ Notes: ${notes}\n\nReply *DONE ${createdTask.id}* to mark as done.`;
+
+    await sendWhatsAppMessage(assignee_phone, message);
+    await sendWhatsAppMessage(senderPhone, `✅ Task created and assigned to ${assignee}`);
 
     res.sendStatus(200);
   } catch (err) {
-    console.error("❌ Error in handleIncomingMessage:", err.message);
-    res.sendStatus(500);
+    console.error("❌ Webhook error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+
+  //DONE message case
+  if (messageText.toUpperCase().startsWith('DONE')) {
+    const taskId = parseInt(messageText.split(' ')[1]);
+  
+    if (isNaN(taskId)) {
+      await sendWhatsAppMessage(senderPhone, "❌ Invalid task ID. Use: DONE <task_id>");
+      return res.sendStatus(200);
+    }
+  
+    const task = await Task.markTaskDone(taskId);
+  
+    if (!task) {
+      await sendWhatsAppMessage(senderPhone, `❌ Task with ID ${taskId} not found.`);
+      return res.sendStatus(200);
+    }
+  
+    const confirmation = `✅ Task *${task.task}* (ID: ${task.id}) has been marked as done.\n🗒️ Notes: ${task.notes || 'N/A'}`;
+  
+    // ✅ Send confirmation to assignee
+    await sendWhatsAppMessage(senderPhone, confirmation);
+  
+    // ✅ Send confirmation to task creator (if not the same person)
+    if (task.creator_phone && task.creator_phone !== senderPhone) {
+      await sendWhatsAppMessage(task.creator_phone, `📬 ${task.assignee} marked task *${task.task}* as done.\n✅ ID: ${task.id}`);
+    }
+  
+    return res.sendStatus(200);
   }
 };

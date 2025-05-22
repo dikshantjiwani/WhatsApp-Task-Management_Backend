@@ -21,12 +21,15 @@ async function getTasksByAssignee(assignee) {
 }
 
 async function markTaskDone(id) {
-  const result = await db.query(
-    'UPDATE tasks SET status = $1 WHERE id = $2 RETURNING *',
-    ['Done', id]
-  );
-  return result.rows[0];
-}
+    const result = await db.query(
+      `UPDATE tasks
+       SET status = 'Done'
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+    return result.rows[0];
+  }
 
 async function updateTaskDetails(id, updates) {
     const result = await db.query(
