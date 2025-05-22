@@ -3,6 +3,7 @@ const { sendWhatsAppMessage } = require('../services/whatsappService');
 
 exports.handleIncomingMessage = async (req, res) => {
   try {
+    console.log("📩 Received WhatsApp message via webhook:", req.body);
     const message = req.body?.message?.body?.trim();
     const senderPhone = req.body?.message?.from;
 
