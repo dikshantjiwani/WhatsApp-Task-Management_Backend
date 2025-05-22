@@ -40,3 +40,22 @@ exports.markTaskDone = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.updateTaskDetails = async (req, res) => {
+  try {
+    const taskId = parseInt(req.params.id);
+    const { status, notes } = req.body;
+
+    const task = await Task.updateTaskDetails(taskId, { status, notes });
+
+    // Send WhatsApp messages to both assignee and creator
+    const message = `🔔 Task *${task.task}* updated.\n📝 Notes: ${task.notes}\n✅ Status: ${task.status}`;
+    await sendWhatsAppMessage(task.assigneePhone, message);
+    await sendWhatsAppMessage(task.creatorPhone, message); // You may need to store creatorPhone
+
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
