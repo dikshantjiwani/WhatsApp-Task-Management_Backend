@@ -16,7 +16,7 @@ app.use('/api', taskRoutes);
 app.use('/api', whatsappRoutes);
 
 //cron job
-cron.schedule('*/2 * * * *', async () => {
+cron.schedule('*/10 * * * *', async () => {
     const result = await db.query(`
       SELECT * FROM tasks
       WHERE status = 'Pending'
