@@ -1,2 +1,2 @@
-# faff-backend
-Repository for hosting backend of faff tech assignment
+# WhatsApp Task Management System
+Repository for hosting the backend of WhatsApp Task Management System
